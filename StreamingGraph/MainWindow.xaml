@@ -1,0 +1,9 @@
+﻿<Window x:Class="StreamingGraph.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sg="clr-namespace:StreamingGraph"
+        Title="MainWindow" Height="350" Width="525">
+    <Grid>
+        <sg:StreamingGraph />
+    </Grid>
+</Window>
