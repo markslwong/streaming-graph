@@ -1,6 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Threading;
 
 
 namespace StreamingGraph
@@ -8,6 +12,7 @@ namespace StreamingGraph
     public partial class StreamingGraph
     {
         private readonly List<DataPoint> _points = new List<DataPoint>();
+        private readonly DispatcherTimer _timer;
 
         private class DataPoint
         {
@@ -29,6 +34,25 @@ namespace StreamingGraph
         public StreamingGraph()
         {
             InitializeComponent();
+
+            _timer = new DispatcherTimer(DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+
+            Loaded += OnLoaded;
+            Unloaded += OnUnloaded;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs args)
+        {
+            _timer.Tick += (s, e) => Render();
+            _timer.Start();
+        }
+        
+        private void OnUnloaded(object sender, RoutedEventArgs args)
+        {
+            _timer.Stop();
         }
 
         public void Add(DateTime time, int frequency)
@@ -82,6 +106,8 @@ namespace StreamingGraph
         }
 
         public int SegmentCount { get; set; }
+
+        public int FrequencyLabelsCount { get; set; }
 
         private TimeSpan SegmentTimeSpan
         {
@@ -151,11 +177,54 @@ namespace StreamingGraph
             }
         }
 
+        private int GetSegmentFrequency(int segmentIndex)
+        {
+            var segmentStart = GetSegmentStart(segmentIndex);
+            var segmentEnd   = GetSegmentEnd(segmentIndex);
+
+            for (var i = 0; i < _points.Count; ++i)
+            {
+                var point = _points[i];
+
+                if (point.Time >= segmentEnd)
+                    return 0;
+
+                if (point.Time >= segmentStart)
+                    return point.Frequency;
+            }
+            return 0;
+        }
+
         private void Render()
         {
+            Update();
+
+            if (SegmentCount == 0)
+                return;
+
             Graph.Children.Clear();
 
-            
+            var bezier = new PolyBezierSegment();
+            var maxFrequency = _points.Max(x => x.Frequency);
+            var segementCenterOffset = 1.0 / SegmentCount * 0.5;
+
+            var startFrequency = GetSegmentFrequency(0);
+
+            bezier.Points.Add(new Point(0, (double)startFrequency / maxFrequency));
+
+            for (var i = 0; i < SegmentCount; ++i)
+            {
+                var frequency = GetSegmentFrequency(i);
+
+                var x = (double)i / SegmentCount + segementCenterOffset;
+                var y = (double)frequency / maxFrequency;
+
+                bezier.Points.Add(new Point(x, y));
+            }
+
+            var endFrequency = GetSegmentFrequency(SegmentCount - 1);
+
+            bezier.Points.Add(new Point(1, (double)endFrequency / maxFrequency));
         }
     }
 }
